@@ -50,7 +50,8 @@ async def rate_limit(argument_dict):
         #   3. cal total not expired request
         latest_timestamp_in_second = 0
         current_request_number = 0
-        for prev_timestamp_in_second, count in timestamps.items():
+        for prev_timestamp_in_second, count in timestamps.copy().items():
+
             diff_second = cur_time_in_second - prev_timestamp_in_second
             if diff_second > upper_time_span_in_second:
                 del timestamps[prev_timestamp_in_second]
