@@ -5,7 +5,7 @@ class Serialization:
     task_queues = {}
 
     @classmethod
-    def put_queue_by_tag(cls, tag, func):
+    def put_queue_by_tag(cls, tag, async_func):
         async def wrapper(**kwargs):
             task_queues = cls.task_queues
             if tag not in task_queues:
@@ -17,7 +17,7 @@ class Serialization:
 
                 await future
 
-            result = await func(kwargs=kwargs)
+            result = await async_func(argument_dict=kwargs)
 
             if task_queues[tag].qsize() > 0:
                 next_task = await task_queues[tag].get()

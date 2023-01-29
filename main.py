@@ -11,8 +11,8 @@ app = FastAPI()
 redis_client = redis.Redis()
 
 
-def rate_limit(kwargs):
-    identifier = operator.itemgetter('identifier')(kwargs)
+async def rate_limit(argument_dict):
+    identifier = operator.itemgetter('identifier')(argument_dict)
 
     # time_span(in second)
     upper_time_span_in_second = 60
@@ -102,10 +102,11 @@ async def index(request: Request):
     try:
         request_is_accepted = await Serialization.put_queue_by_tag(
             tag=ip_address,
-            func=rate_limit
+            async_func=rate_limit
         )(identifier=ip_address)
 
     except Exception as e:
+
         logging.exception(e)
         request_is_accepted = False
 
