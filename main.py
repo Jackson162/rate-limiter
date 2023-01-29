@@ -33,7 +33,17 @@ async def rate_limit(argument_dict):
         )
     else:
         # get existing history
-        timestamps = redis_client.hgetall(name=identifier)
+        timestamps_redis = redis_client.hgetall(name=identifier)
+        timestamps: dict[int, int] = {}
+
+        for key_bytes, val_bytes in timestamps_redis.items():
+            key_str = key_bytes.decode(encoding="utf-8")
+            key_int = int(key_str)
+
+            val_str = val_bytes.decode(encoding="utf-8")
+            val_int = int(val_str)
+            timestamps[key_int] = val_int
+
         # enumerate timestamps:
         #   1. remove the expired one (cur_time - timestamp > upper_time_span)
         #   2. select largest timestamp
