@@ -94,7 +94,7 @@ def redis_set_prop_expire_dict(name, prop, value, mapping, expire_time):
     redis_client.expire(name=name, time=expire_time)
 
 
-@app.route('/')
+@app.get('/')
 async def index(request: Request):
     ip_address = request.client.host
     request_is_accepted = False
