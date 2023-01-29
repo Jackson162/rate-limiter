@@ -5,7 +5,7 @@ import operator
 import redis
 from fastapi import FastAPI, Request
 
-from .utils import Serialization
+from utils.serialization import Serialization
 
 app = FastAPI()
 redis_client = redis.Redis()
