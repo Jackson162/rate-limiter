@@ -16,7 +16,7 @@ async def rate_limit(argument_dict):
 
     # time_span(in second)
     upper_time_span_in_second = 60
-    upper_request_allowance = 100
+    upper_request_allowance = 5
 
     lower_time_span_in_second = 1
     lower_request_allowance = 3
@@ -90,7 +90,8 @@ async def rate_limit(argument_dict):
             prop=None,
             value=None
         )
-        return True
+
+    return True
 
 
 def redis_set_prop_expire_dict(name, prop, value, mapping, expire_time):
@@ -122,6 +123,9 @@ async def index(request: Request):
         request_is_accepted = False
 
     if request_is_accepted:
-        return "This is a valid response!"
+        response = f"To {ip_address}: This is a valid response!"
     else:
-        return "Your request is rejected!"
+        response = f"To {ip_address}: Your request is rejected!"
+
+    print(response)
+    return response
