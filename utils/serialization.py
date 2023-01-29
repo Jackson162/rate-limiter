@@ -13,8 +13,8 @@ class Serialization:
             else:
                 task = {}
                 future = asyncio.Future()
-                task.unlock = future.set_result
-
+                task['unlock'] = future.set_result
+                await task_queues[tag].put(task)
                 await future
 
             result = await async_func(argument_dict=kwargs)
