@@ -1,13 +1,19 @@
-import redis
 from time import time
+import logging
+import operator
 
+import redis
 from fastapi import FastAPI, Request
+
+from .utils import Serialization
 
 app = FastAPI()
 redis_client = redis.Redis()
 
 
-def rate_limit(identifier):
+def rate_limit(kwargs):
+    identifier = operator.itemgetter('identifier')(kwargs)
+
     # time_span(in second)
     upper_time_span_in_second = 60
     upper_request_allowance = 100
@@ -22,7 +28,8 @@ def rate_limit(identifier):
             name=identifier,
             prop=cur_time_in_second,
             value=1,
-            expire_time=upper_time_span_in_second
+            expire_time=upper_time_span_in_second,
+            mapping=None
         )
     else:
         # get existing history
@@ -68,7 +75,9 @@ def rate_limit(identifier):
         redis_set_prop_expire_dict(
             name=identifier,
             mapping=timestamps,
-            expire_time=upper_time_span_in_second
+            expire_time=upper_time_span_in_second,
+            prop=None,
+            value=None
         )
         return True
 
@@ -86,9 +95,20 @@ def redis_set_prop_expire_dict(name, prop, value, mapping, expire_time):
 
 
 @app.route('/')
-def index(request: Request):
+async def index(request: Request):
     ip_address = request.client.host
-    request_is_accepted = rate_limit(identifier=ip_address)
+    request_is_accepted = False
+
+    try:
+        request_is_accepted = await Serialization.put_queue_by_tag(
+            tag=ip_address,
+            func=rate_limit
+        )(identifier=ip_address)
+
+    except Exception as e:
+        logging.exception(e)
+        request_is_accepted = False
+
     if request_is_accepted:
         return "This is a valid response!"
     else:
