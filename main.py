@@ -1,24 +1,13 @@
+import redis
 from time import time
 
-from flask import Flask, request
-import redis
+from fastapi import FastAPI, Request
 
-app = Flask(__name__)
+app = FastAPI()
 redis_client = redis.Redis()
 
 
-def redis_set_prop_expire_dict(name, prop, value, mapping, expire_time):
-    if prop and value:
-        redis_client.hset(name=name, key=prop, value=value)
-    elif mapping:
-        redis_client.hset(name=name, mapping=mapping)
-    else:
-        raise Exception("A prop/value pair or a mapping should be provided!")
-
-    redis_client.expire(name=name, time=expire_time)
-
-
-def rate_limit(request):
+def rate_limit(identifier):
     # time_span(in second)
     upper_time_span_in_second = 60
     upper_request_allowance = 100
@@ -27,18 +16,17 @@ def rate_limit(request):
     lower_request_allowance = 3
 
     cur_time_in_second = int(time())
-    ip_address = request.remote_addr
 
-    if redis_client.exists(ip_address) == 0:
+    if redis_client.exists(identifier) == 0:
         redis_set_prop_expire_dict(
-            name=ip_address,
+            name=identifier,
             prop=cur_time_in_second,
             value=1,
             expire_time=upper_time_span_in_second
         )
     else:
         # get existing history
-        timestamps = redis_client.hgetall(name=ip_address)
+        timestamps = redis_client.hgetall(name=identifier)
         # enumerate timestamps:
         #   1. remove the expired one (cur_time - timestamp > upper_time_span)
         #   2. select largest timestamp
@@ -78,16 +66,29 @@ def rate_limit(request):
             timestamps[time_boundary] = 1
 
         redis_set_prop_expire_dict(
-            name=ip_address,
+            name=identifier,
             mapping=timestamps,
             expire_time=upper_time_span_in_second
         )
         return True
 
 
+def redis_set_prop_expire_dict(name, prop, value, mapping, expire_time):
+    if prop and value:
+        redis_client.hset(name=name, key=prop, value=value)
+    elif mapping:
+        redis_client.delete(name)
+        redis_client.hset(name=name, mapping=mapping)
+    else:
+        raise Exception("A prop/value pair or a mapping should be provided!")
+
+    redis_client.expire(name=name, time=expire_time)
+
+
 @app.route('/')
-def index():
-    request_is_accepted = rate_limit(request=request)
+def index(request: Request):
+    ip_address = request.client.host
+    request_is_accepted = rate_limit(identifier=ip_address)
     if request_is_accepted:
         return "This is a valid response!"
     else:
