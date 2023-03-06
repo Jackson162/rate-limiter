@@ -1,0 +1,8 @@
+version: "2.3"
+
+services:
+  redis:
+    image: redis:5-alpine
+    container_name: redis-rate-limiter
+    ports:
+      - 6379:6379
