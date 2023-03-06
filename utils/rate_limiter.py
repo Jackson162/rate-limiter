@@ -12,22 +12,23 @@ class RateLimiter:
     lower_time_span_in_second = 1
     lower_request_allowance = 3
 
-    def activate(self, argument_dict):
+    @classmethod
+    def activate(cls, argument_dict):
         identifier = itemgetter('identifier')(argument_dict)
 
         cur_time_in_second = int(time())
         no_identifier_exists = redis_client.exists(identifier) == 0
 
         if no_identifier_exists:
-            self.redis_set_expired_dict_props(
+            cls.__redis_set_expired_dict_props(
                 name=identifier,
                 prop=cur_time_in_second,
                 value=1,
-                expire_time=self.upper_time_span_in_second,
+                expire_time=cls.upper_time_span_in_second,
                 mapping=None
             )
         else:
-            prev_timestamps = self.get_prev_timestamps(identifier=identifier)
+            prev_timestamps = cls.__get_prev_timestamps(identifier=identifier)
 
             # enumerate prev_timestamps:
             #   1. remove the expired timestamps
@@ -38,7 +39,7 @@ class RateLimiter:
 
             for prev_timestamp_in_second, count in prev_timestamps.copy().items():
                 diff_second = cur_time_in_second - prev_timestamp_in_second
-                timestamp_expired = diff_second > self.upper_time_span_in_second
+                timestamp_expired = diff_second > cls.upper_time_span_in_second
 
                 if timestamp_expired:
                     del prev_timestamps[prev_timestamp_in_second]
@@ -50,22 +51,22 @@ class RateLimiter:
                 )
                 current_request_number += count
 
-            # check whether current_request_number is bigger(inclusive) than self.upper_request_allowance:
+            # check whether current_request_number is bigger(inclusive) than cls.upper_request_allowance:
             #   if true: reject request
-            request_number_exceeds_upper_limit = current_request_number >= self.upper_request_allowance
+            request_number_exceeds_upper_limit = current_request_number >= cls.upper_request_allowance
             if request_number_exceeds_upper_limit:
                 return False
 
             #   cal new cur_time_boundary
-            cur_time_boundary = self.cal_cur_time_boundary(
+            cur_time_boundary = cls.__cal_cur_time_boundary(
                 cur_time_in_second=cur_time_in_second, latest_timestamp_in_second=latest_timestamp_in_second)
 
             #  get counter from prev_timestamps if exist: check count of the boundary, else: init one
             if cur_time_boundary in prev_timestamps:
-                #  if count is bigger(inclusive) than self.lower_request_allowance, reject
+                #  if count is bigger(inclusive) than cls.lower_request_allowance, reject
                 #  else: add one to it
                 cur_count = prev_timestamps[cur_time_boundary]
-                request_number_exceeds_lower_limit = cur_count >= self.lower_request_allowance
+                request_number_exceeds_lower_limit = cur_count >= cls.lower_request_allowance
                 if request_number_exceeds_lower_limit:
                     return False
 
@@ -73,10 +74,10 @@ class RateLimiter:
             else:
                 prev_timestamps[cur_time_boundary] = 1
 
-            self.redis_set_expired_dict_props(
+            cls.__redis_set_expired_dict_props(
                 name=identifier,
                 mapping=prev_timestamps,
-                expire_time=self.upper_time_span_in_second,
+                expire_time=cls.upper_time_span_in_second,
                 prop=None,
                 value=None,
                 overwrite=True
@@ -84,7 +85,8 @@ class RateLimiter:
 
         return True
 
-    def redis_set_expired_dict_props(self, name, prop, value, mapping, expire_time, overwrite=False):
+    @staticmethod
+    def __redis_set_expired_dict_props(name, prop, value, mapping, expire_time, overwrite=False):
 
         if overwrite:
             redis_client.delete(name)
@@ -99,7 +101,8 @@ class RateLimiter:
 
         redis_client.expire(name=name, time=expire_time)
 
-    def get_prev_timestamps(self, identifier):
+    @staticmethod
+    def __get_prev_timestamps(identifier):
         timestamps_redis = redis_client.hgetall(name=identifier)
         prev_timestamps: dict[int, int] = {}
 
@@ -113,9 +116,10 @@ class RateLimiter:
 
         return prev_timestamps
 
-    def cal_cur_time_boundary(self, cur_time_in_second, latest_timestamp_in_second):
+    @classmethod
+    def __cal_cur_time_boundary(cls, cur_time_in_second, latest_timestamp_in_second):
         diff_second = cur_time_in_second - latest_timestamp_in_second
-        mod = diff_second % self.lower_time_span_in_second
+        mod = diff_second % cls.lower_time_span_in_second
         cur_time_boundary = cur_time_in_second - mod
 
         return cur_time_boundary

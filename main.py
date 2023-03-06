@@ -15,7 +15,7 @@ async def index(request: Request):
     try:
         request_is_accepted = await Serialization.put_queue_by_tag(
             tag=ip_address,
-            async_func=RateLimiter.activate
+            func=RateLimiter.activate
         )(identifier=ip_address)
 
     except Exception as e:
