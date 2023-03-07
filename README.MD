@@ -12,11 +12,8 @@ only 3 requests are allowed in one second time span
 only 5 requests are allowed in one minute time span
 
 the number of request record in `1000000~1000060` time span in redis will look like:    
-`127.0.0.1: {      
-  1000000: 3      
-  1000001: 2      
-}`     
-the sixth request comes in 1000001 time span will be blocked even though there are only 2 requests in 1000001 time span (lower_request_allowance is 3)
+`127.0.0.1: { 1000000: 3, 1000001: 2 }`     
+The sixth request comes in 1000001 time span will be blocked even though there are only 2 requests in 1000001 time span (lower_request_allowance is 3)
 
 
 # Quick Start
